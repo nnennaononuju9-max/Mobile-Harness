@@ -51,6 +51,7 @@ import com.jarves.mh.runtime.RuntimeSetupController
 import com.jarves.mh.runtime.RuntimeSetupService
 import com.jarves.mh.runtime.RuntimeSetupSnapshot
 import com.jarves.mh.runtime.RuntimeSetupStatus
+import com.jarves.mh.runtime.readTailText
 import com.jarves.mh.runtime.supportsArm64Runtime
 import com.jarves.mh.runtime.AndroidAppInstaller
 import com.jarves.mh.update.AppUpdateInfo
@@ -878,7 +879,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     projectGuestRoot(project),
                 )
                 val exitCode = process.waitFor()
-                val buildOutput = (process as? NativeSpawnProcess)?.outputFile?.readText().orEmpty()
+                val buildOutput = (process as? NativeSpawnProcess)?.outputFile?.readTailText(MAX_PROCESS_OUTPUT_BYTES).orEmpty()
                 check(exitCode == 0) {
                     buildOutput.trim().takeLast(2_000).ifBlank { "Gradle build failed (exit code $exitCode)" }
                 }
@@ -1081,16 +1082,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (setupCompletionHandled) return
                 setupCompletionHandled = true
                 preferences.runtimeSetupComplete = true
-                if (preferences.onboardingComplete) {
-                    viewModelScope.launch { initializeRuntime() }
-                } else {
-                    _state.update {
-                        it.copy(
-                            startupStage = StartupStage.MODEL_SETUP,
-                            startupProgress = 1f,
-                            startupBytes = null,
-                            startupIndeterminate = false,
-                        )
+                viewModelScope.launch {
+                    val installedStacks = withContext(Dispatchers.IO) { installer.installedStacks() }
+                    _state.update { it.copy(installedDevStacks = installedStacks) }
+                    if (preferences.onboardingComplete) {
+                        initializeRuntime()
+                    } else {
+                        _state.update {
+                            it.copy(
+                                startupStage = StartupStage.MODEL_SETUP,
+                                startupProgress = 1f,
+                                startupBytes = null,
+                                startupIndeterminate = false,
+                            )
+                        }
                     }
                 }
             }
@@ -1155,6 +1160,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     startupStage = StartupStage.READY,
                     startupProgress = 1f,
+                    installedDevStacks = installer.installedStacks(),
                     installedAgentVersions = installer.installedAgentVersions(),
                 )
             }
@@ -1549,7 +1555,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 while (process.isAlive) delay(50)
                 check(process.waitFor() == 0) { "Could not list Antigravity models" }
-                val output = (process as? NativeSpawnProcess)?.outputFile?.readText().orEmpty()
+                val output = (process as? NativeSpawnProcess)?.outputFile?.readTailText(MAX_PROCESS_OUTPUT_BYTES).orEmpty()
                 output.lineSequence()
                     .map { sanitizeTerminalOutput(it).trim() }
                     .mapNotNull { line -> line.split(Regex("\\s+"), limit = 2).firstOrNull() }
@@ -1739,6 +1745,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             key,
             providerProtocolForAgent(profile, _state.value.agentKind),
             models,
+            profile.openRouterProviderOrder,
+            profile.openRouterAllowFallbacks,
         )
     }
 
@@ -1759,6 +1767,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 key,
                 providerProtocolForAgent(profile, _state.value.agentKind),
                 emptyList(),
+                profile.openRouterProviderOrder,
+                profile.openRouterAllowFallbacks,
             )
             when (result) {
                 is ConnectionValidation.Success -> _state.update {
@@ -2538,7 +2548,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 outputFile = outputFile,
             )
             val exit = process.waitFor()
-            exit to sanitizeTerminalOutput(outputFile.takeIf(File::isFile)?.readText().orEmpty()).trim()
+            exit to sanitizeTerminalOutput(outputFile.readTailText(MAX_PROCESS_OUTPUT_BYTES)).trim()
         } finally {
             outputFile.delete()
         }
@@ -3530,6 +3540,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val MAX_PROJECT_TERMINAL_HISTORY = 100
         private const val MAX_PROJECT_TERMINAL_OUTPUT = 200_000
         private const val MAX_ATTACHMENTS_PER_MESSAGE = 5
+        private const val MAX_PROCESS_OUTPUT_BYTES = 512 * 1024
         private const val MAX_ATTACHMENT_BYTES = 25L * 1024L * 1024L
         private const val MAX_IMPORTED_PROJECT_BYTES = 8L * 1024L * 1024L * 1024L
         private const val MAX_IMPORTED_ZIP_ENTRIES = 100_000
