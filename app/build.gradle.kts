@@ -82,7 +82,7 @@ android {
         providers.gradleProperty("appVersionCode").orNull?.toIntOrNull()?.let { versionCode = it }
         providers.gradleProperty("appVersionName").orNull?.let { versionName = it }
 
-        ndk.abiFilters += "arm64-v8a"
+        ndk.abiFilters += "armeabi-v7a"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
