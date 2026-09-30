@@ -76,7 +76,7 @@ target_include_directories(prootloader PRIVATE "${PROOT_ROOT}")
 target_compile_options(prootloader PRIVATE -fPIC -ffreestanding)
 target_link_options(prootloader PRIVATE
     -static -nostdlib
-    "-Wl,--build-id=none,--rosegment,-Ttext=0x2000000000,-z,noexecstack,-u,pokedata_workaround"
+    "-Wl,--build-id=none,--rosegment,-Ttext=0x10000000,-z,noexecstack,-u,pokedata_workaround"
 )
 set_target_properties(prootloader PROPERTIES OUTPUT_NAME "prootloader-bin" SUFFIX "")
 
