@@ -21,3 +21,24 @@ fun supportsArm32Runtime(
 
     return kernelIsArm32 && hasArm32Abi
 }
+
+/**
+ * Returns true when the Android device and Linux environment support ARM64.
+ *
+ * Android ABI: arm64-v8a
+ * Linux architecture: aarch64 / arm64
+ */
+fun supportsArm64Runtime(
+    supportedAbis: Array<String>,
+    osArchitecture: String?,
+): Boolean {
+    val kernelIsArm64 =
+        osArchitecture.equals("aarch64", ignoreCase = true) ||
+        osArchitecture.equals("arm64", ignoreCase = true)
+
+    val hasArm64Abi = supportedAbis.any {
+        it.equals("arm64-v8a", ignoreCase = true)
+    }
+
+    return kernelIsArm64 && hasArm64Abi
+}
