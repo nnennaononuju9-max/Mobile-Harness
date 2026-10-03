@@ -3,4 +3,4 @@
 	url = https://github.com/termux/proot.git
 [submodule "third_party/libandroid-shmem"]
 	path = third_party/libandroid-shmem
-	url = https://github.com/termux/libandroid-shmem.git
+	url = https://github.com/nnennaononuju9-max/libandroid-shmem.git
