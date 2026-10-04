@@ -33,17 +33,17 @@ val runtimeBundleDir = rootProject.layout.projectDirectory.dir("dist/runtime-bun
 val generatedRuntimeAssets = layout.buildDirectory.dir("generated/runtime-assets")
 
 val prepareBundledAgentAssets = tasks.register<Sync>("prepareBundledAgentAssets") {
-    from(runtimeBundleDir.file("pocketdev-agy-arm64-2026.09.1.tar.zst"))
+    from(runtimeBundleDir.file("pocketdev-agy-armhf-2026.09.1.tar.zst"))
     into(generatedRuntimeAssets.map { it.dir("shared/runtime") })
 }
 
 val prepareOfflineRuntimeAssets = tasks.register<Sync>("prepareOfflineRuntimeAssets") {
     from(
-        runtimeBundleDir.file("pocketdev-core-arm64-2026.09.5.tar.zst"),
-        runtimeBundleDir.file("pocketdev-claude-arm64-2026.09.1.tar.zst"),
-        runtimeBundleDir.file("pocketdev-python-arm64-2026.09.2.tar.zst"),
-        runtimeBundleDir.file("pocketdev-android-arm64-2026.09.1.tar.zst"),
-        runtimeBundleDir.file("pocketdev-dsh-arm64-2026.09.1.tar.zst"),
+        runtimeBundleDir.file("pocketdev-core-armhf-2026.09.5.tar.zst"),
+        runtimeBundleDir.file("pocketdev-claude-armhf-2026.09.1.tar.zst"),
+        runtimeBundleDir.file("pocketdev-python-armhf-2026.09.2.tar.zst"),
+        runtimeBundleDir.file("pocketdev-android-armhf-2026.09.1.tar.zst"),
+        runtimeBundleDir.file("pocketdev-dsh-armhf-2026.09.1.tar.zst"),
     )
     into(generatedRuntimeAssets.map { it.dir("offline/runtime") })
 }
