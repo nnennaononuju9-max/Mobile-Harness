@@ -25,8 +25,19 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 
-      - name: Build Online Debug APK
-        run: ./gradlew clean assembleOnlineDebug --no-daemon
+      - name: Restore signing keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.MH_UPLOAD_STORE_B64 }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 --decode > mobile-harness-debug.jks
+
+      - name: Build Online Release APK
+        env:
+          MH_UPLOAD_STORE_FILE: mobile-harness-debug.jks
+          MH_UPLOAD_STORE_PASSWORD: ${{ secrets.MH_UPLOAD_STORE_PASSWORD }}
+          MH_UPLOAD_KEY_ALIAS: ${{ secrets.MH_UPLOAD_KEY_ALIAS }}
+          MH_UPLOAD_KEY_PASSWORD: ${{ secrets.MH_UPLOAD_KEY_PASSWORD }}
+        run: ./gradlew clean assembleOnlineRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
