@@ -382,8 +382,22 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.CLAUDE_CODE -> updateClaude(runtime, expectedVersion, onProgress)
             com.jarves.mh.model.AgentKind.DEEPSEEK_HARNESS -> updateDsh(runtime, expectedVersion, onProgress)
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> updateAgy(runtime, expectedVersion, onProgress)
+            com.jarves.mh.model.AgentKind.MINI_SWE_AGENT -> updateMiniSweAgent(runtime, expectedVersion, onProgress)
         }
         onProgress(RuntimeInstallProgress("${agent.title} $expectedVersion is ready", 1f, event = RuntimeInstallEvent.COMPLETED))
+    }
+
+    private suspend fun updateMiniSweAgent(
+        runtime: InstalledRuntime,
+        expectedVersion: String,
+        onProgress: suspend (RuntimeInstallProgress) -> Unit,
+    ) {
+        verifyGuest(
+            runtime.proot,
+            "pip3 install --break-system-packages --quiet --upgrade mini-swe-agent",
+            "mini-swe-agent could not be updated",
+        )
+        miniSweMarker.writeText(expectedVersion)
     }
 
     private suspend fun updateClaude(

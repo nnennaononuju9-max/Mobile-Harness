@@ -86,12 +86,12 @@ enum class AgentKind(
     companion object {
         fun fromStored(value: String?): AgentKind = entries.firstOrNull {
             it.stableId == value || it.name == value
-        }
+        } ?: CLAUDE_CODE
 
         fun available(): List<AgentKind> {
             val isArm64Device = android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
             return entries.filter { !it.requires64Bit || isArm64Device }
-        } ?: CLAUDE_CODE
+        }
     }
 }
 
@@ -151,6 +151,7 @@ fun providersForAgent(agent: AgentKind): List<ProviderKind> = when (agent) {
     AgentKind.DEEPSEEK_HARNESS -> ProviderKind.entries.filter { it in DEEPSEEK_HARNESS_PROVIDERS }
     AgentKind.CLAUDE_CODE -> ProviderKind.entries.filterNot { it == ProviderKind.OPENCODE_ZEN }
     AgentKind.ANTIGRAVITY -> emptyList()
+    AgentKind.MINI_SWE_AGENT -> ProviderKind.entries.filterNot { it == ProviderKind.OPENCODE_ZEN }
 }
 
 data class ProviderProfile(

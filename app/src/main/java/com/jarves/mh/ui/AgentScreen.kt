@@ -826,6 +826,7 @@ fun AgentScreen(
                                     AgentKind.ANTIGRAVITY -> "Antigravity"
                                     AgentKind.DEEPSEEK_HARNESS -> "DeepSeek"
                                     AgentKind.CLAUDE_CODE -> "Claude Code"
+                                    AgentKind.MINI_SWE_AGENT -> "Mini SWE-Agent"
                                 }
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
