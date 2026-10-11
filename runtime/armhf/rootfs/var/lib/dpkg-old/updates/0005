@@ -1,0 +1,20 @@
+Package: libgdbm6
+Status: install reinstreq unpacked
+Priority: optional
+Section: libs
+Installed-Size: 124
+Maintainer: Nicolas Mora <babelouest@debian.org>
+Architecture: armhf
+Multi-Arch: same
+Source: gdbm
+Version: 1.23-3
+Depends: libc6 (>= 2.34)
+Suggests: gdbm-l10n (= 1.23-3)
+Description: GNU dbm database routines (runtime version) 
+ GNU dbm ('gdbm') is a library of database functions that use extendible
+ hashing and works similarly to the standard UNIX 'dbm' functions.
+ .
+ The basic use of 'gdbm' is to store key/data pairs in a data file, thus
+ providing a persistent version of the 'dictionary' Abstract Data Type
+ ('hash' to perl programmers).
+Homepage: https://gnu.org/software/gdbm

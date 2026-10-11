@@ -1,0 +1,7 @@
+Package: libxmuu1
+Status: install reinstreq half-installed
+Priority: optional
+Section: libs
+Architecture: armhf
+Multi-Arch: same
+Version: 2:1.1.3-3

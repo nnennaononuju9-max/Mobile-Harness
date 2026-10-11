@@ -1,0 +1,7 @@
+Package: less
+Status: install reinstreq half-installed
+Priority: important
+Section: text
+Architecture: armhf
+Multi-Arch: foreign
+Version: 590-2.1~deb12u2

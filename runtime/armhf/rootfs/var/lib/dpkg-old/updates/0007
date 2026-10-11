@@ -1,0 +1,7 @@
+Package: libgdbm-compat4
+Status: install reinstreq half-installed
+Priority: optional
+Section: libs
+Architecture: armhf
+Multi-Arch: same
+Version: 1.23-3

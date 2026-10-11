@@ -1,0 +1,7 @@
+Package: libgssapi-krb5-2
+Status: install reinstreq half-installed
+Priority: optional
+Section: libs
+Architecture: armhf
+Multi-Arch: same
+Version: 1.20.1-2+deb12u5

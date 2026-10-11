@@ -1,0 +1,28 @@
+Package: libcbor0.8
+Status: install reinstreq unpacked
+Priority: optional
+Section: libs
+Installed-Size: 97
+Maintainer: Vincent Bernat <bernat@debian.org>
+Architecture: armhf
+Multi-Arch: same
+Source: libcbor (0.8.0-2)
+Version: 0.8.0-2+b1
+Depends: libc6 (>= 2.4)
+Description: library for parsing and generating CBOR (RFC 7049)
+ CBOR is a general-purpose schema-less binary data format, defined in
+ RFC 7049. This package provides a C library for parsing and generating
+ CBOR. The main features are:
+ .
+  - Complete RFC conformance
+  - Robust C99 implementation
+  - Layered architecture offers both control and convenience
+  - Flexible memory management
+  - No shared global state - threading friendly
+  - Proper handling of UTF-8
+  - Full support for streams & incremental processing
+  - Extensive documentation and test suite
+  - No runtime dependencies, small footprint
+ .
+ This package contains the runtime library.
+Homepage: https://github.com/PJK/libcbor

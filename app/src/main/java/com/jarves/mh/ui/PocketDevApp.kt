@@ -199,7 +199,7 @@ import com.jarves.mh.model.WorkspaceEntry
 import com.jarves.mh.model.projectSlug
 import com.jarves.mh.runtime.RuntimeExecutionService
 import com.jarves.mh.runtime.RuntimeSetupService
-import com.jarves.mh.runtime.supportsArm64Runtime
+import com.jarves.mh.runtime.supportsArm32Runtime
 import com.jarves.mh.runtime.AntigravityAuthStatus
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -799,10 +799,10 @@ private fun RuntimeSetupPromptScreen(
     val memoryInfo = remember { ActivityManager.MemoryInfo().also(activityManager::getMemoryInfo) }
     val totalRamGb = memoryInfo.totalMem.toDouble() / 1_073_741_824.0
     val totalRamLabel = String.format(java.util.Locale.US, "%.1f", totalRamGb)
-    val arm64 = supportsArm64Runtime(Build.SUPPORTED_ABIS, System.getProperty("os.arch"))
+    val arm32 = supportsArm32Runtime(Build.SUPPORTED_ABIS, System.getProperty("os.arch"))
     // Android reports usable physical memory after hardware/GPU reservations.
     // RAM is therefore informational; it must not reject nominal 4 GB phones.
-    val compatible = arm64
+    val compatible = arm32
 
     var currentStep by remember { mutableIntStateOf(0) }
     val setupScrollState = rememberScrollState()
@@ -942,8 +942,8 @@ private fun RuntimeSetupPromptScreen(
                         SpecRow(
                             icon = Icons.Default.Code,
                             label = "Processor",
-                            value = Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a",
-                            statusOk = arm64,
+                            value = Build.SUPPORTED_ABIS.firstOrNull() ?: "armeabi-v7a",
+                            statusOk = arm32,
                         )
 
                         SpecRow(
@@ -1067,13 +1067,13 @@ private fun RuntimeSetupPromptScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 ) {
                     Column {
-                        AgentKind.entries.forEachIndexed { index, agent ->
+                        AgentKind.available().forEachIndexed { index, agent ->
                             AgentChoiceRow(
                                 agent = agent,
                                 selected = selectedAgent == agent,
                                 onClick = { onSelectAgent(agent) },
                             )
-                            if (index != AgentKind.entries.lastIndex) {
+                            if (index != AgentKind.available().lastIndex) {
                                 HorizontalDivider(
                                     modifier = Modifier.padding(start = 62.dp),
                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
@@ -1400,13 +1400,13 @@ private fun AgentSwitchSheet(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Column {
-                    AgentKind.entries.forEachIndexed { index, agent ->
+                    AgentKind.available().forEachIndexed { index, agent ->
                         AgentChoiceRow(
                             agent = agent,
                             selected = agent == selected,
                             onClick = { onSelect(agent) },
                         )
-                        if (index != AgentKind.entries.lastIndex) {
+                        if (index != AgentKind.available().lastIndex) {
                             HorizontalDivider(
                                 modifier = Modifier.padding(start = 62.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
@@ -2426,14 +2426,14 @@ private fun DeviceCheckStep(context: Context, onContinue: () -> Unit) {
     val memoryInfo = remember { ActivityManager.MemoryInfo().also(activityManager::getMemoryInfo) }
     val totalRamGb = memoryInfo.totalMem.toDouble() / 1_073_741_824.0
     val totalRamLabel = String.format(java.util.Locale.US, "%.1f", totalRamGb)
-    val arm64 = supportsArm64Runtime(Build.SUPPORTED_ABIS, System.getProperty("os.arch"))
-    val compatible = arm64
+    val arm32 = supportsArm32Runtime(Build.SUPPORTED_ABIS, System.getProperty("os.arch"))
+    val compatible = arm32
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         BrandMark()
         Text("Your phone is the workspace", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text("Mobile Harness checks compatibility before downloading the private Linux runtime.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         CheckRow(Icons.Default.Memory, "Memory", "$totalRamLabel GB usable · ${if (totalRamGb >= 7.5) "Full mode" else "Lite mode"}", true)
-        CheckRow(Icons.Default.Code, "Processor", Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown", arm64)
+        CheckRow(Icons.Default.Code, "Processor", Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown", arm32)
         CheckRow(Icons.Default.Storage, "Android", "Android ${Build.VERSION.RELEASE}", true)
         Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(16.dp)) {
             Text(

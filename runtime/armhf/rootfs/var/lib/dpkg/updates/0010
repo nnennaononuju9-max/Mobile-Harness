@@ -1,0 +1,7 @@
+Package: libperl5.36
+Status: install reinstreq half-installed
+Priority: optional
+Section: libs
+Architecture: armhf
+Multi-Arch: same
+Version: 5.36.0-7+deb12u3

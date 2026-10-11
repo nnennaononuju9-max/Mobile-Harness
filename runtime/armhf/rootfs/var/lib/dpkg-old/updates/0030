@@ -1,0 +1,7 @@
+Package: krb5-locales
+Status: install reinstreq half-installed
+Priority: optional
+Section: localization
+Architecture: all
+Multi-Arch: foreign
+Version: 1.20.1-2+deb12u5

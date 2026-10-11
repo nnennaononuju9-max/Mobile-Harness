@@ -67,6 +67,7 @@ class RuntimeInstaller(private val context: Context) {
     private val devStacksFile = File(rootfs, ".pocket-dev-stacks.json")
     private val dshMarker = File(rootfs, ".pocket-dsh-version")
     private val agyMarker = File(rootfs, ".pocket-agy-version")
+    private val miniSweMarker = File(rootfs, ".pocket-mini-swe-agent-version")
     private val githubCliMarker = File(rootfs, ".pocket-github-cli-version")
     private val dshAndroidCompatibilityMarker = File(rootfs, ".pocket-dsh-android-compat-version")
     private val macosMetadataRepairMarker = File(rootfs, ".pocket-macos-metadata-repair")
@@ -142,11 +143,11 @@ class RuntimeInstaller(private val context: Context) {
         onProgress: suspend (RuntimeInstallProgress) -> Unit,
     ): InstalledRuntime {
         require(
-            supportsArm64Runtime(
+            supportsArm32Runtime(
                 android.os.Build.SUPPORTED_ABIS,
                 System.getProperty("os.arch"),
             ),
-        ) { "Unsupported architecture: Mobile Harness requires an ARM64 device or ARM64 emulator" }
+        ) { "Unsupported architecture: Mobile Harness requires an ARM32 device or ARM32 emulator" }
         val proot = File(context.applicationInfo.nativeLibraryDir, "libproot.so")
         require(proot.canExecute()) { "The embedded PRoot launcher is unavailable" }
 
@@ -212,6 +213,8 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.CLAUDE_CODE -> ensureClaudeInstalled(proot, 0.985f, onProgress)
             com.jarves.mh.model.AgentKind.DEEPSEEK_HARNESS -> ensureDshInstalled(proot, 0.985f, onProgress)
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> ensureAgyInstalled(proot, 0.985f, onProgress)
+        
+            com.jarves.mh.model.AgentKind.MINI_SWE_AGENT -> ensureMiniSweAgentInstalled(proot, 0.985f, onProgress)
         }
         onProgress(RuntimeInstallProgress("Setup complete", 1f))
         return InstalledRuntime(proot, rootfs)
@@ -231,6 +234,8 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.CLAUDE_CODE -> ensureClaudeInstalled(runtime.proot, 0.05f, onProgress)
             com.jarves.mh.model.AgentKind.DEEPSEEK_HARNESS -> ensureDshInstalled(runtime.proot, 0.05f, onProgress)
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> ensureAgyInstalled(runtime.proot, 0.05f, onProgress)
+        
+            com.jarves.mh.model.AgentKind.MINI_SWE_AGENT -> ensureMiniSweAgentInstalled(runtime.proot, 0.05f, onProgress)
         }
         onProgress(RuntimeInstallProgress("${agent.title} is ready", 1f))
     }
@@ -250,6 +255,10 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> isInstalled() &&
                 File(rootfs, AGY_GUEST_PATH.removePrefix("/")).canExecute() &&
                 !agyMarker.readTextOrNull().isNullOrBlank()
+        
+            com.jarves.mh.model.AgentKind.MINI_SWE_AGENT -> isInstalled() &&
+                File(rootfs, "usr/local/bin/mini_bridge.py").canExecute() &&
+                !miniSweMarker.readTextOrNull().isNullOrBlank()
         }
     }
 
@@ -266,56 +275,54 @@ class RuntimeInstaller(private val context: Context) {
 
     fun isGitHubCliInstalled(): Boolean = isInstalled() &&
         File(rootfs, GITHUB_CLI_GUEST_PATH.removePrefix("/")).canExecute() &&
-        githubCliMarker.readTextOrNull() == GITHUB_CLI_VERSION
+        githubCliMarker.readTextOrNull() == "apt"
 
-    /** Installs GitHub's official ARM64 CLI on demand; it is not bundled in the APK. */
-    suspend fun ensureGitHubCliInstalled(onProgress: suspend (RuntimeInstallProgress) -> Unit) {
+    /** Installs GitHub CLI for the ARMHF guest on demand; it is not bundled in the APK. */
+    suspend fun ensureGitHubCliInstalled(
+        onProgress: suspend (RuntimeInstallProgress) -> Unit,
+    ) {
         if (isGitHubCliInstalled()) return
         check(!BuildConfig.OFFLINE_RUNTIME_BUNDLES) {
             "GitHub sign-in needs the PocketDev online APK."
         }
-        writeResolver()
-        downloads.mkdirs()
-        val downloaded = File(downloads, "gh-$GITHUB_CLI_VERSION-linux-arm64.tar.gz")
-        onProgress(RuntimeInstallProgress("Downloading official GitHub CLI", 0.05f))
-        downloadVerified(GITHUB_CLI_RELEASE_URL, downloaded, GITHUB_CLI_RELEASE_SHA256) { bytes, total ->
-            val ratio = if (total > 0L) bytes.toFloat() / total else 0f
-            onProgress(
-                RuntimeInstallProgress(
-                    message = "Downloading GitHub CLI $GITHUB_CLI_VERSION",
-                    fraction = 0.05f + ratio * 0.75f,
-                    downloadedBytes = bytes,
-                    totalBytes = total.takeIf { it > 0L },
-                    event = RuntimeInstallEvent.DOWNLOAD,
-                ),
-            )
+
+        onProgress(RuntimeInstallProgress("Installing GitHub CLI for ARMHF", 0.1f))
+
+        val runtime = installedRuntime()
+        val verify = runtime.proot
+
+        verifyGuest(
+            proot = verify,
+            command = """
+                set -e
+                export DEBIAN_FRONTEND=noninteractive
+                apt-get update
+                apt-get install -y gh
+            """.trimIndent(),
+            failureMessage = "GitHub CLI ARMHF installation failed",
+        )
+
+        onProgress(
+            RuntimeInstallProgress(
+                "Verifying GitHub CLI",
+                0.85f,
+                indeterminate = true,
+            ),
+        )
+
+        verifyGuest(
+            proot = verify,
+            command = "$GITHUB_CLI_GUEST_PATH --version",
+            failureMessage = "GitHub CLI verification failed",
+        )
+
+        githubCliMarker.writeText("apt")
+        check(isGitHubCliInstalled()) {
+            "GitHub CLI installation is incomplete"
         }
-        onProgress(RuntimeInstallProgress("Installing GitHub CLI $GITHUB_CLI_VERSION", 0.85f, indeterminate = true))
-        val destination = File(rootfs, GITHUB_CLI_GUEST_PATH.removePrefix("/"))
-        destination.parentFile?.mkdirs()
-        var found = false
-        TarArchiveInputStream(GzipCompressorInputStream(BufferedInputStream(downloaded.inputStream()))).use { archive ->
-            var entry = archive.nextEntry
-            while (entry != null) {
-                if (entry.isFile && entry.name.removePrefix("./").endsWith("/bin/gh")) {
-                    val staged = File(destination.parentFile, ".gh-$GITHUB_CLI_VERSION.installing")
-                    FileOutputStream(staged).use { archive.copyTo(it) }
-                    Os.chmod(staged.absolutePath, 0b111101101)
-                    Os.rename(staged.absolutePath, destination.absolutePath)
-                    found = true
-                    break
-                }
-                entry = archive.nextEntry
-            }
-        }
-        check(found) { "Official GitHub CLI archive did not contain the expected binary" }
-        downloaded.delete()
-        verifyGuest(proot = installedRuntime().proot, command = "$GITHUB_CLI_GUEST_PATH --version", failureMessage = "GitHub CLI verification failed")
-        githubCliMarker.writeText(GITHUB_CLI_VERSION)
-        check(isGitHubCliInstalled()) { "GitHub CLI installation is incomplete" }
+
         onProgress(RuntimeInstallProgress("GitHub CLI is ready", 1f))
     }
-
     /**
      * Versions recorded after each real agent binary has been installed and verified.
      * This intentionally reports what is present in PRoot, even when a newer app build
@@ -339,7 +346,6 @@ class RuntimeInstaller(private val context: Context) {
             ?.let { put(com.jarves.mh.model.AgentKind.ANTIGRAVITY, it) }
     }
 
-    /** Checks each installed agent against its own authoritative release source. */
     suspend fun checkAgentUpdates(): Map<com.jarves.mh.model.AgentKind, AgentUpdateInfo> {
         val installed = installedAgentVersions()
         return buildMap {
@@ -385,25 +391,55 @@ class RuntimeInstaller(private val context: Context) {
         expectedVersion: String,
         onProgress: suspend (RuntimeInstallProgress) -> Unit,
     ) {
-        val latest = JSONObject(fetchText("https://registry.npmjs.org/@anthropic-ai/claude-code/latest")).getString("version")
-        check(latest == expectedVersion) { "A newer Claude Code release appeared. Check again before updating." }
-        val base = "https://downloads.claude.ai/claude-code-releases/$latest"
-        val manifest = JSONObject(fetchText("$base/manifest.json"))
-        val checksum = manifest.getJSONObject("platforms").getJSONObject("linux-arm64").getString("checksum")
-        val downloaded = File(downloads, "claude-$latest")
-        downloadVerified("$base/linux-arm64/claude", downloaded, checksum) { bytes, total ->
-            val ratio = if (total > 0L) bytes.toFloat() / total else 0f
-            onProgress(RuntimeInstallProgress("Downloading Claude Code $latest", ratio * 0.9f, bytes, total.takeIf { it > 0L }, event = RuntimeInstallEvent.DOWNLOAD))
+        val latest = JSONObject(
+            fetchText("https://registry.npmjs.org/@anthropic-ai/claude-code/latest")
+        ).getString("version")
+
+        check(latest == expectedVersion) {
+            "A newer Claude Code release appeared. Check again before updating."
         }
-        val claude = File(rootfs, CLAUDE_GUEST_PATH.removePrefix("/"))
-        claude.parentFile?.mkdirs()
-        val staged = File(claude.parentFile, ".claude-$latest.installing")
-        downloaded.copyTo(staged, overwrite = true)
-        Os.chmod(staged.absolutePath, 0b111101101)
-        Os.rename(staged.absolutePath, claude.absolutePath)
-        downloaded.delete()
-        verifyGuest(runtime.proot, "$CLAUDE_GUEST_PATH --version", "Claude Code update verification failed")
+
+        onProgress(
+            RuntimeInstallProgress(
+                "Installing Claude Code $latest through ARMHF npm",
+                0.15f,
+                indeterminate = true,
+            )
+        )
+
+        verifyGuest(
+            proot = runtime.proot,
+            command = """
+                set -e
+                export PATH=/usr/local/bin:/usr/local/lib/nodejs/bin:/usr/bin:/bin
+                npm install -g @anthropic-ai/claude-code@$latest --force
+            """.trimIndent(),
+            failureMessage = "Claude Code ARMHF npm installation failed",
+        )
+
+        onProgress(
+            RuntimeInstallProgress(
+                "Verifying Claude Code $latest",
+                0.85f,
+                indeterminate = true,
+            )
+        )
+
+        verifyGuest(
+            proot = runtime.proot,
+            command = "$CLAUDE_GUEST_PATH --version",
+            failureMessage = "Claude Code update verification failed",
+        )
+
         claudeMarker.writeText(latest)
+
+        onProgress(
+            RuntimeInstallProgress(
+                "Claude Code $latest is ready",
+                1f,
+                event = RuntimeInstallEvent.COMPLETED,
+            )
+        )
     }
 
     private suspend fun updateAgy(
@@ -411,34 +447,13 @@ class RuntimeInstaller(private val context: Context) {
         expectedVersion: String,
         onProgress: suspend (RuntimeInstallProgress) -> Unit,
     ) {
-        val manifest = fetchAgyManifest()
-        val latest = manifest.getString("version")
-        check(latest == expectedVersion) { "A newer Antigravity release appeared. Check again before updating." }
-        val downloaded = File(downloads, "antigravity-$latest-linux-arm64.tar.gz")
-        downloadVerified(manifest.getString("url"), downloaded, manifest.getString("sha512"), algorithm = "SHA-512") { bytes, total ->
-            val ratio = if (total > 0L) bytes.toFloat() / total else 0f
-            onProgress(RuntimeInstallProgress("Downloading Antigravity CLI $latest", ratio * 0.9f, bytes, total.takeIf { it > 0L }, event = RuntimeInstallEvent.DOWNLOAD))
-        }
-        val destination = File(rootfs, AGY_GUEST_PATH.removePrefix("/"))
-        var found = false
-        TarArchiveInputStream(GzipCompressorInputStream(BufferedInputStream(downloaded.inputStream()))).use { archive ->
-            var entry = archive.nextEntry
-            while (entry != null) {
-                if (entry.isFile && entry.name.removePrefix("./") == "antigravity") {
-                    val staged = File(destination.parentFile, ".agy-$latest.installing")
-                    FileOutputStream(staged).use { archive.copyTo(it) }
-                    Os.chmod(staged.absolutePath, 0b111101101)
-                    Os.rename(staged.absolutePath, destination.absolutePath)
-                    found = true
-                    break
-                }
-                entry = archive.nextEntry
-            }
-        }
-        downloaded.delete()
-        check(found) { "Antigravity update archive is incomplete" }
-        verifyGuest(runtime.proot, "$AGY_GUEST_PATH --version", "Antigravity update verification failed")
-        agyMarker.writeText(latest)
+        onProgress(
+            RuntimeInstallProgress(
+                "Antigravity ARMHF update unavailable; keeping installed version",
+                1f,
+                event = RuntimeInstallEvent.COMPLETED,
+            )
+        )
     }
 
     private suspend fun updateDsh(
@@ -472,7 +487,6 @@ class RuntimeInstaller(private val context: Context) {
     }
 
     private fun fetchAgyManifest(): JSONObject = JSONObject(
-        fetchText("https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_arm64.json"),
     )
 
     private fun isVersionNewer(candidate: String, current: String): Boolean {
@@ -571,7 +585,77 @@ class RuntimeInstaller(private val context: Context) {
         }
     }
 
-    /**
+        private val MINI_SWE_AGENT_VERSION = "1"
+
+    private val MINI_BRIDGE_PY_SOURCE = """
+#!/usr/bin/env python3
+# mini_bridge.py - wraps mini-swe-agent's Python API and emits JSONL events
+# matching the shape MiniEventParser (in MiniSweAgentRuntimeBridge.kt) reads.
+import sys, json, subprocess
+from minisweagent.agents.default import DefaultAgent
+from minisweagent.models.litellm_model import LitellmModel
+from minisweagent.environments.local import LocalEnvironment
+
+def emit(event):
+    print(json.dumps(event), flush=True)
+
+def main():
+    request = json.loads(sys.stdin.readline())
+    task = request["message"]["content"]
+    model_name = request.get("model", "claude-sonnet-5")
+    workdir = request.get("workdir", ".")
+
+    env = LocalEnvironment(cwd=workdir)
+    model = LitellmModel(model_name=model_name)
+    agent = DefaultAgent(model, env)
+
+    orig_execute = env.execute
+    def traced_execute(command, *a, **kw):
+        emit({"event": "tool_started", "name": "Bash", "detail": command})
+        result = orig_execute(command, *a, **kw)
+        emit({"event": "tool_completed", "name": "Bash", "detail": command})
+        return result
+    env.execute = traced_execute
+
+    try:
+        exit_status, result_text = agent.run(task)
+        emit({"event": "text", "value": result_text or ""})
+        emit({"event": "result", "status": "SUCCESS", "response": result_text})
+    except Exception as e:
+        emit({"event": "result", "status": "ERROR", "error": str(e)})
+
+if __name__ == "__main__":
+    main()
+"""
+
+    private suspend fun ensureMiniSweAgentInstalled(
+        proot: File,
+        fraction: Float,
+        onProgress: suspend (RuntimeInstallProgress) -> Unit,
+    ) {
+        if (isAgentInstalled(com.jarves.mh.model.AgentKind.MINI_SWE_AGENT)) return
+        ensureStackInstalled(DevStack.PYTHON) { progress ->
+            onProgress(RuntimeInstallProgress(progress.message, fraction * 0.5f, indeterminate = true))
+        }
+        onProgress(RuntimeInstallProgress("Installing mini-swe-agent", fraction * 0.6f, indeterminate = true))
+        verifyGuest(
+            proot,
+            "pip3 install --break-system-packages --quiet mini-swe-agent",
+            "mini-swe-agent could not be installed",
+        )
+        onProgress(RuntimeInstallProgress("Installing the mini-swe-agent bridge script", fraction * 0.85f, indeterminate = true))
+        val bridgeScript = File(rootfs, "usr/local/bin/mini_bridge.py")
+        bridgeScript.parentFile?.mkdirs()
+        bridgeScript.writeText(MINI_BRIDGE_PY_SOURCE)
+        Os.chmod(bridgeScript.absolutePath, 0b111101101)
+        verifyGuest(proot, "python3 -c \"import minisweagent\"", "mini-swe-agent verification failed")
+        miniSweMarker.writeText(MINI_SWE_AGENT_VERSION)
+        require(isAgentInstalled(com.jarves.mh.model.AgentKind.MINI_SWE_AGENT)) {
+            "mini-swe-agent installation is incomplete"
+        }
+    }
+
+/**
      * DSH uses POSIX hard links for no-clobber publication of new session and
      * workspace files. Android blocks that syscall inside PRoot. PRoot's
      * `--link2symlink` workaround is unsuitable here because DSH immediately
@@ -686,8 +770,6 @@ class RuntimeInstaller(private val context: Context) {
             "usr/bin/python3.8",
             "usr/bin/pip",
             "usr/bin/pip3",
-            "usr/lib/aarch64-linux-gnu/libpython3.8.so.1",
-            "usr/lib/aarch64-linux-gnu/libpython3.8.so.1.0",
             "usr/lib/python3",
             "usr/lib/python3.8",
             "usr/local/lib/python3.8",
@@ -1131,7 +1213,7 @@ class RuntimeInstaller(private val context: Context) {
         if (File(rootfs, "usr/local/bin/node").exists()) return
         onProgress(RuntimeInstallProgress("Downloading Node.js $NODE_VERSION LTS", from))
         downloads.mkdirs()
-        val nodeFileName = "node-$NODE_VERSION-linux-arm64.tar.gz"
+        val nodeFileName = "node-$NODE_VERSION-linux-armv7l.tar.gz"
         val nodeBaseUrl = "https://nodejs.org/dist/$NODE_VERSION"
         val checksum = fetchText("$nodeBaseUrl/SHASUMS256.txt")
             .lineSequence()
@@ -1395,7 +1477,7 @@ class RuntimeInstaller(private val context: Context) {
             }
             File(rootfs, "usr/bin/env").canExecute() &&
                 File(rootfs, "usr/bin/bash").canExecute() &&
-                File(rootfs, "lib/ld-linux-aarch64.so.1").exists()
+                File(rootfs, "lib/ld-linux-armhf.so.3").exists()
         }.onFailure {
             android.util.Log.e("RuntimeInstaller", "Could not repair Linux compatibility links", it)
         }.getOrDefault(false)
@@ -1818,25 +1900,20 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decis
         const val AGY_GUEST_PATH = "/root/.local/bin/agy"
         const val GITHUB_CLI_GUEST_PATH = "/root/.local/bin/gh"
         private const val AGY_VERSION = "1.1.27"
-        private const val AGY_RELEASE_URL = "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.1.27-5211191891591168/linux-arm/cli_linux_arm64.tar.gz"
-        private const val AGY_RELEASE_SHA512 = "ed45f6930785aa4b42f14e07ace1c9d91a94fb76e760f54acbd7d3d3951e1f957fd456a0dae2a3124dd9a3b689bf7afb7c9303a3e4ba95037fc10063424d9bf9"
-        private const val GITHUB_CLI_VERSION = "2.100.0"
-        private const val GITHUB_CLI_RELEASE_URL = "https://github.com/cli/cli/releases/download/v2.100.0/gh_2.100.0_linux_arm64.tar.gz"
-        private const val GITHUB_CLI_RELEASE_SHA256 = "ea4e7a581a32ccad6cc7923cb1576ac5859ba4b9a16ab22eb8f8a96e78e2e961"
         private const val LEGACY_README = "# Pocket Dev project\n\nThis project is managed locally on Android.\n"
         private const val LEGACY_INDEX = "<!doctype html><title>Pocket Dev</title><h1>Hello from Android</h1>\n"
-        private const val ROOTFS_VERSION = "ubuntu-20.04.5-arm64"
-        private const val ROOTFS_FILE = "ubuntu-base-20.04.5-base-arm64.tar.gz"
+        private const val ROOTFS_VERSION = "ubuntu-20.04.5-armhf"
+        private const val ROOTFS_FILE = "ubuntu-base-20.04.5-base-armhf.tar.gz"
         private const val ROOTFS_URL = "https://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/$ROOTFS_FILE"
         private const val ROOTFS_SHA256 = "f9b999afb4c4b10193087ea8c11be36d688f19e609b05179b571f29357954b52"
-        private const val NODE_VERSION = "v24.19.0"
-        private const val LANGUAGE_TOOLS_VERSION = "node-v24.19.0-python3-v1"
+        private const val NODE_VERSION = "v22.23.3"
+        private const val LANGUAGE_TOOLS_VERSION = "node-v22.23.3-python3-v1"
         private const val CORE_TOOLS_VERSION = "core-bundle-2026.09.5"
         private const val LEGACY_CORE_TOOLS_VERSION = "core-bundle-2026.09.4"
         private const val SYSTEM_UPGRADE_VERSION = "ubuntu-maintenance-v1"
         private const val ANDROID_TOOLS_VERSION = "sdk36-build-tools35-gradle8.14.3-maven-2026.09"
         private const val ANDROID_ASSET_BASE = "https://appdevforall.org/dev-assets/debug"
-        private const val ANDROID_SDK_URL = "$ANDROID_ASSET_BASE/android-sdk-arm64-v8a.zip"
+        private const val ANDROID_SDK_URL = "$ANDROID_ASSET_BASE/android-sdk-armeabi-v7a.zip"
         private const val ANDROID_SDK_SHA256 = "bfe5bc940a7ede14735817a40962256666ce4152b9f3135f34a4ab9bccb87c3f"
         private const val ANDROID_GRADLE_URL = "$ANDROID_ASSET_BASE/gradle-8.14.3-bin.zip"
         private const val ANDROID_GRADLE_SHA256 = "8e228b640319a7c739c0a93d002facdeb08e8f3ba394d57d74ee355a5e93072c"
@@ -1851,7 +1928,7 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decis
         private const val DSH_ANDROID_COMPATIBILITY_VERSION = "copyfile-excl-v1"
         private val CORE_BUNDLE = RuntimeBundle(
             label = "Core",
-            fileName = "pocketdev-core-arm64-2026.09.5.tar.zst",
+            fileName = "pocketdev-core-armhf-2026.09.5.tar.zst",
             sha256 = "df0cf7251c74f82d424231e3804114a4ca66b16130eea9abab11e220dc7ac012",
             compressedBytes = 72_185_773L,
         )
@@ -1859,31 +1936,31 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decis
         private const val CLAUDE_GUEST_PATH = "/usr/local/bin/claude"
         private val CLAUDE_BUNDLE = RuntimeBundle(
             label = "Claude Code",
-            fileName = "pocketdev-claude-arm64-2026.09.1.tar.zst",
+            fileName = "pocketdev-claude-armhf-2026.09.1.tar.zst",
             sha256 = "0f68e15630e8c0fc941afe3f61ab5a3eb4407b334018de6dbdabfa5eca627724",
             compressedBytes = 75_289_800L,
         )
         private val PYTHON_BUNDLE = RuntimeBundle(
             label = "Python",
-            fileName = "pocketdev-python-arm64-2026.09.2.tar.zst",
+            fileName = "pocketdev-python-armhf-2026.09.2.tar.zst",
             sha256 = "6b3f56f7743fec142bc045db3ea561ee83fe89af87c2799165ef60351164ef85",
             compressedBytes = 55_419_626L,
         )
         private val ANDROID_BUNDLE = RuntimeBundle(
             label = "Android",
-            fileName = "pocketdev-android-arm64-2026.09.1.tar.zst",
+            fileName = "pocketdev-android-armhf-2026.09.1.tar.zst",
             sha256 = "01bea058ebcb17416d1eb08c0211b3782da3228eb3c8348eb3719f2d61dd3ec6",
             compressedBytes = 569_652_007L,
         )
         private val DSH_BUNDLE = RuntimeBundle(
             label = "DeepSeek Harness",
-            fileName = "pocketdev-dsh-arm64-2026.09.1.tar.zst",
+            fileName = "pocketdev-dsh-armhf-2026.09.1.tar.zst",
             sha256 = "88e6a23ba74e1cd74a2c923b7e0d6bd78ba4b7e5f8a9b649f12bf4ffe158cce5",
             compressedBytes = 27_752_194L,
         )
         private val AGY_BUNDLE = RuntimeBundle(
             label = "Antigravity CLI",
-            fileName = "pocketdev-agy-arm64-2026.09.1.tar.zst",
+            fileName = "pocketdev-agy-armhf-2026.09.1.tar.zst",
             sha256 = "a659ab9188956fc4721ca86fb21b5118e0e489f47a5e02ae6b4f2fb423659d78",
             compressedBytes = 41_870_025L,
         )

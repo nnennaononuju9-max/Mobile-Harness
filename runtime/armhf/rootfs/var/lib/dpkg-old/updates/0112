@@ -1,0 +1,17 @@
+Package: libldap-common
+Status: install reinstreq unpacked
+Priority: optional
+Section: libs
+Installed-Size: 92
+Maintainer: Debian OpenLDAP Maintainers <pkg-openldap-devel@lists.alioth.debian.org>
+Architecture: all
+Multi-Arch: foreign
+Source: openldap
+Version: 2.5.13+dfsg-5
+Replaces: libldap-2.4-2 (<< 2.4.44+dfsg-1)
+Conffiles:
+ /etc/ldap/ldap.conf newconffile
+Description: OpenLDAP common files for libraries
+ These are common files for the run-time libraries for the OpenLDAP
+ (Lightweight Directory Access Protocol) servers and clients.
+Homepage: https://www.openldap.org/

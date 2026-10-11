@@ -1,0 +1,19 @@
+Package: libmagic1
+Status: install reinstreq unpacked
+Priority: optional
+Section: libs
+Installed-Size: 171
+Maintainer: Christoph Biedl <debian.axhn@manchmal.in-ulm.de>
+Architecture: armhf
+Multi-Arch: same
+Source: file
+Version: 1:5.44-3
+Depends: libbz2-1.0, libc6 (>= 2.33), liblzma5 (>= 5.1.1alpha+20120614), zlib1g (>= 1:1.1.4), libmagic-mgc (= 1:5.44-3)
+Suggests: file
+Conffiles:
+ /etc/magic newconffile
+ /etc/magic.mime newconffile
+Description: Recognize the type of data in a file using "magic" numbers - library
+ This library can be used to classify files according to magic number
+ tests. It implements the core functionality of the file command.
+Homepage: https://www.darwinsys.com/file/

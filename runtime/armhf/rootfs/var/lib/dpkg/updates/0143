@@ -1,0 +1,17 @@
+Package: publicsuffix
+Status: install ok unpacked
+Priority: optional
+Section: net
+Installed-Size: 339
+Maintainer: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Architecture: all
+Multi-Arch: foreign
+Version: 20230209.2326-1
+Provides: publicsuffix-dafsa
+Description: accurate, machine-readable list of domain name suffixes
+ A machine-readable list of domain name suffixes that accept public
+ registration.  Each suffix represents the part of a domain name which
+ is not under the control of the individual registrant, which makes
+ the list useful for grouping cookies, deciding same-origin policies,
+ collating spam, and other activities.
+Homepage: https://publicsuffix.org

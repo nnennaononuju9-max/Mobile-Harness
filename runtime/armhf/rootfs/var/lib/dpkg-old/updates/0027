@@ -1,0 +1,7 @@
+Package: file
+Status: install reinstreq half-installed
+Priority: standard
+Section: utils
+Architecture: armhf
+Multi-Arch: foreign
+Version: 1:5.44-3

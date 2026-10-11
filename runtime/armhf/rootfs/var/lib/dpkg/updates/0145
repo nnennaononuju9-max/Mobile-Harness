@@ -1,0 +1,14 @@
+Package: xauth
+Status: install reinstreq unpacked
+Priority: optional
+Section: x11
+Installed-Size: 60
+Maintainer: Debian X Strike Force <debian-x@lists.debian.org>
+Architecture: armhf
+Multi-Arch: foreign
+Version: 1:1.1.2-1
+Depends: libc6 (>= 2.34), libx11-6, libxau6 (>= 1:1.0.9), libxext6, libxmuu1 (>= 2:1.1.3)
+Description: X authentication utility
+ xauth is a small utility to read and manipulate Xauthority files, which
+ are used by servers and clients alike to control authentication and access
+ to X sessions.

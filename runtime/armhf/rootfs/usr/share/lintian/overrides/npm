@@ -1,0 +1,6 @@
+# False positive
+executable-not-elf-or-script usr/share/nodejs/@npmcli/run-script/lib/node-gyp-bin/node-gyp.cmd
+extra-license-file usr/share/nodejs/@npmcli/arborist/bin/license.js
+repeated-path-segment arborist usr/share/nodejs/@npmcli/arborist/lib/arborist/
+# Unneeded chmod +x
+script-not-executable usr/share/nodejs/npm/node_modules/*

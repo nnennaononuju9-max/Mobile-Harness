@@ -1,0 +1,6 @@
+Package: perl
+Status: install ok not-installed
+Priority: standard
+Section: perl
+Architecture: armhf
+Multi-Arch: allowed

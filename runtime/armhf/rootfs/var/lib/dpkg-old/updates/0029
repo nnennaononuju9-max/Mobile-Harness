@@ -1,0 +1,17 @@
+Package: file
+Status: install ok unpacked
+Priority: standard
+Section: utils
+Installed-Size: 70
+Maintainer: Christoph Biedl <debian.axhn@manchmal.in-ulm.de>
+Architecture: armhf
+Multi-Arch: foreign
+Version: 1:5.44-3
+Depends: libc6 (>= 2.34), libmagic1 (= 1:5.44-3)
+Breaks: debhelper (<< 12.2~)
+Description: Recognize the type of data in a file using "magic" numbers
+ The file command is "a file type guesser", a command-line tool that
+ tells you in words what kind of data a file contains.
+ .
+ This package contains the file program itself.
+Homepage: https://www.darwinsys.com/file/

@@ -1,0 +1,28 @@
+Package: liberror-perl
+Status: install ok unpacked
+Priority: optional
+Section: perl
+Installed-Size: 73
+Maintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>
+Architecture: all
+Multi-Arch: foreign
+Version: 0.17029-2
+Depends: perl:any
+Description: Perl module for error/exception handling in an OO-ish way
+ The Error module provides two interfaces.  Firstly "Error" provides a
+ procedural interface to exception handling. Secondly "Error" is a base class
+ for errors/exceptions that can either be thrown, for subsequent catch, or can
+ simply be recorded.
+ .
+ Errors in the class "Error" should not be thrown directly, but the user
+ should throw errors from a sub-class of "Error".
+ .
+ Warning: Using the "Error" module is no longer recommended due to the
+ black-magical nature of its syntactic sugar, which often tends to break. Its
+ maintainers have stopped actively writing code that uses it, and discourage
+ people from doing so.
+ .
+ Recommended alternatives are Exception::Class (libexception-class-perl),
+ Error::Exception (not packaged), TryCatch (libtrycatch-perl), and Try::Tiny
+ (libtry-tiny-perl).
+Homepage: https://metacpan.org/release/Error

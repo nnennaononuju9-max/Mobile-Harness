@@ -1,0 +1,7 @@
+Package: wget
+Status: install reinstreq half-installed
+Priority: standard
+Section: web
+Architecture: armhf
+Multi-Arch: foreign
+Version: 1.21.3-1+deb12u1

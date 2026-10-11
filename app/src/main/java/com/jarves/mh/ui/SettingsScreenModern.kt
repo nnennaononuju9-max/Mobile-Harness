@@ -320,7 +320,7 @@ fun SettingsScreen(
                     expanded = expanded == SettingsSection.RUNTIME,
                     onClick = { toggle(SettingsSection.RUNTIME) },
                 ) {
-                    RuntimeInfoRow("Architecture", "ARM64 (aarch64)")
+                    RuntimeInfoRow("Architecture", "ARMv7 (armhf)")
                     RuntimeInfoRow("Environment", "Ubuntu 20.04 PRoot")
                     RuntimeInfoRow(
                         "Active agent",
@@ -336,7 +336,7 @@ fun SettingsScreen(
                     if (state.installedAgentVersions.isEmpty()) {
                         RuntimeInfoRow("Status", "No verified agent installation")
                     } else {
-                        AgentKind.entries.forEach { agent ->
+                        AgentKind.available().forEach { agent ->
                             state.installedAgentVersions[agent]?.let { version ->
                                 RuntimeInfoRow(agent.title, "v$version")
                             }

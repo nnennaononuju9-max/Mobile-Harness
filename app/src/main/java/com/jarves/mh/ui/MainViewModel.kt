@@ -44,6 +44,7 @@ import com.jarves.mh.runtime.AntigravityAuthController
 import com.jarves.mh.runtime.AntigravityAuthState
 import com.jarves.mh.runtime.AntigravityAuthStatus
 import com.jarves.mh.runtime.AntigravityRuntimeBridge
+import com.jarves.mh.runtime.MiniSweAgentRuntimeBridge
 import com.jarves.mh.runtime.NativeSpawnProcess
 import com.jarves.mh.runtime.RuntimeInstallProgress
 import com.jarves.mh.runtime.RuntimeInstaller
@@ -52,7 +53,7 @@ import com.jarves.mh.runtime.RuntimeSetupService
 import com.jarves.mh.runtime.RuntimeSetupSnapshot
 import com.jarves.mh.runtime.RuntimeSetupStatus
 import com.jarves.mh.runtime.readTailText
-import com.jarves.mh.runtime.supportsArm64Runtime
+import com.jarves.mh.runtime.supportsArm32Runtime
 import com.jarves.mh.runtime.AndroidAppInstaller
 import com.jarves.mh.update.AppUpdateInfo
 import com.jarves.mh.update.AppUpdater
@@ -262,7 +263,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _state.value.activeChatId?.let { preferences.saveAgentConversation(AgentKind.ANTIGRAVITY, projectId, it, id) }
         },
     )
-    private val agentRegistry = AgentRegistry.builtIns(claudeRuntime, dshRuntime, antigravityRuntime)
+    private val miniSweRuntime = MiniSweAgentRuntimeBridge(
+        application,
+        model = { _state.value.provider.model },
+    ) { profile -> vault.get(profile.kind.name) }
+    private val agentRegistry = AgentRegistry.builtIns(claudeRuntime, dshRuntime, antigravityRuntime, miniSweRuntime)
     private fun activeRuntime(): com.jarves.mh.runtime.RuntimeBridge = agentRegistry.require(_state.value.agentKind).runtime
     private val providerApi = ProviderApiClient()
     private fun appUpdater(): AppUpdater = AppUpdater(
@@ -334,6 +339,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch { dshRuntime.events.collect(::onRuntimeEvent) }
         viewModelScope.launch { antigravityRuntime.events.collect(::onRuntimeEvent) }
+        viewModelScope.launch { miniSweRuntime.events.collect(::onRuntimeEvent) }
         viewModelScope.launch {
             antigravityAuthController.state.collect { auth ->
                 _state.update { it.copy(antigravityAuth = auth) }
@@ -411,7 +417,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         listOf(
             TerminalOutputLine(
                 command = "uname -a",
-                output = "Linux pocket-dev 6.1.0-arm64 #1 SMP aarch64 GNU/Linux (PRoot Sandbox)",
+                output = "Linux pocket-dev 6.1.0-armv7 #1 SMP armv7l GNU/Linux (PRoot Sandbox)",
                 exitCode = 0,
             ),
         ),
@@ -977,6 +983,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         claudeRuntime.configureProjectRoot(projectId, rootPath)
         dshRuntime.configureProjectRoot(projectId, rootPath)
         antigravityRuntime.configureProjectRoot(projectId, rootPath)
+        miniSweRuntime.configureProjectRoot(projectId, rootPath)
     }
 
     init {
@@ -986,11 +993,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun bootstrap() {
-        if (!supportsArm64Runtime(android.os.Build.SUPPORTED_ABIS, System.getProperty("os.arch"))) {
+        if (!supportsArm32Runtime(android.os.Build.SUPPORTED_ABIS, System.getProperty("os.arch"))) {
             _state.update {
                 it.copy(
                     startupStage = StartupStage.SETUP_REQUIRED,
-                    startupMessage = "ARM64 device required",
+                    startupMessage = "ARM32 device required",
                     startupError = null,
                     startupErrorIsOffline = false,
                 )

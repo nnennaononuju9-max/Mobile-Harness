@@ -1,4 +1,4 @@
-name: Android Build
+name: Build Mobile Harness Release
 
 on:
   workflow_dispatch:
@@ -15,14 +15,32 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-        with:
-          submodules: recursive
 
-      - name: Build APK
-        run: ./gradlew assembleRelease
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Restore signing keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.MH_UPLOAD_STORE_B64 }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 --decode > mobile-harness-release.jks
+
+      - name: Build Release APK
+        env:
+          MH_UPLOAD_STORE_FILE: mobile-harness-release.jks
+          MH_UPLOAD_STORE_PASSWORD: ${{ secrets.MH_UPLOAD_STORE_PASSWORD }}
+          MH_UPLOAD_KEY_ALIAS: ${{ secrets.MH_UPLOAD_KEY_ALIAS }}
+          MH_UPLOAD_KEY_PASSWORD: ${{ secrets.MH_UPLOAD_KEY_PASSWORD }}
+        run: ./gradlew clean assembleOnlineRelease --no-daemon
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: mobile-harness-arm32-release
+          name: mobile-harness-release
           path: app/build/outputs/apk/**/*.apk

@@ -1,0 +1,7 @@
+Package: libldap-common
+Status: install reinstreq half-installed
+Priority: optional
+Section: libs
+Architecture: all
+Multi-Arch: foreign
+Version: 2.5.13+dfsg-5

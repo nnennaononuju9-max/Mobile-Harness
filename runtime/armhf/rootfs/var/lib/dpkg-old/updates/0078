@@ -1,0 +1,7 @@
+Package: libldap-2.5-0
+Status: install reinstreq half-installed
+Priority: optional
+Section: libs
+Architecture: armhf
+Multi-Arch: same
+Version: 2.5.13+dfsg-5

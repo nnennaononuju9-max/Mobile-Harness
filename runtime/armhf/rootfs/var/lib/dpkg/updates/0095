@@ -1,0 +1,20 @@
+Package: curl
+Status: install ok unpacked
+Priority: optional
+Section: web
+Installed-Size: 412
+Maintainer: Alessandro Ghedini <ghedo@debian.org>
+Architecture: armhf
+Multi-Arch: foreign
+Version: 7.88.1-10+deb12u15
+Depends: libc6 (>= 2.34), libcurl4 (= 7.88.1-10+deb12u15), zlib1g (>= 1:1.1.4)
+Description: command line tool for transferring data with URL syntax
+ curl is a command line tool for transferring data with URL syntax, supporting
+ DICT, FILE, FTP, FTPS, GOPHER, HTTP, HTTPS, IMAP, IMAPS, LDAP, LDAPS, POP3,
+ POP3S, RTMP, RTSP, SCP, SFTP, SMTP, SMTPS, TELNET and TFTP.
+ .
+ curl supports SSL certificates, HTTP POST, HTTP PUT, FTP uploading, HTTP form
+ based upload, proxies, cookies, user+password authentication (Basic, Digest,
+ NTLM, Negotiate, kerberos...), file transfer resume, proxy tunneling and a
+ busload of other useful tricks.
+Homepage: https://curl.se/

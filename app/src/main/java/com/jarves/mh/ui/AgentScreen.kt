@@ -211,7 +211,7 @@ fun AgentScreen(
     var viewedAgent by rememberSaveable { mutableStateOf(state.agentKind) }
 
     val orderedAgents = remember(state.primaryAgentKind) {
-        listOf(state.primaryAgentKind) + AgentKind.entries.filterNot { it == state.primaryAgentKind }
+        listOf(state.primaryAgentKind) + AgentKind.available().filterNot { it == state.primaryAgentKind }
     }
     val viewedAgentInstalled = viewedAgent == state.agentKind ||
         state.installedAgentVersions.containsKey(viewedAgent)

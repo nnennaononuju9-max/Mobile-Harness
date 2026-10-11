@@ -658,14 +658,14 @@ private fun LegacySettingsScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        InfoRow(icon = Icons.Default.Memory, label = "Architecture", value = "ARM64 (aarch64)")
+                        InfoRow(icon = Icons.Default.Memory, label = "Architecture", value = "ARMv7 (armhf)")
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         InfoRow(icon = Icons.Default.Terminal, label = "Linux Rootfs", value = "Ubuntu 20.04 PRoot")
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         InfoRow(
                             icon = Icons.Default.SmartToy,
                             label = "Installed agents",
-                            value = AgentKind.entries.mapNotNull { agent ->
+                            value = AgentKind.available().mapNotNull { agent ->
                                 state.installedAgentVersions[agent]?.let { version -> "${agent.title} v$version" }
                             }.joinToString(" · ").ifBlank { "No verified agent installation" },
                         )

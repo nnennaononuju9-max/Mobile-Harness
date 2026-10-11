@@ -1,0 +1,20 @@
+Package: krb5-locales
+Status: install ok unpacked
+Priority: optional
+Section: localization
+Installed-Size: 273
+Maintainer: Sam Hartman <hartmans@debian.org>
+Architecture: all
+Multi-Arch: foreign
+Source: krb5
+Version: 1.20.1-2+deb12u5
+Description: internationalization support for MIT Kerberos
+ Kerberos is a system for authenticating users and services on a network.
+ Kerberos is a trusted third-party service.  That means that there is a
+ third party (the Kerberos server) that is trusted by all the entities on
+ the network (users and services, usually called "principals").
+ .
+ This is the MIT reference implementation of Kerberos V5.
+ .
+ This package contains internationalized messages for MIT Kerberos.
+Homepage: https://web.mit.edu/kerberos/

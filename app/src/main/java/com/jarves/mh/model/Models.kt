@@ -53,12 +53,14 @@ enum class AgentKind(
     val title: String,
     val subtitle: String,
     val downloadNote: String,
+    val requires64Bit: Boolean = false,
 ) {
     CLAUDE_CODE(
         "claude-code",
         "Claude Code",
         "Anthropic's coding agent · broad provider support",
         "71.8 MB",
+        requires64Bit = true,
     ),
     DEEPSEEK_HARNESS(
         "deepseek-harness",
@@ -71,12 +73,24 @@ enum class AgentKind(
         "Antigravity CLI",
         "Google's official coding agent · Google account",
         "39.9 MB",
+        requires64Bit = true,
+    ),
+    MINI_SWE_AGENT(
+        "mini-swe-agent",
+        "Mini SWE-Agent",
+        "Lightweight open-source coding agent · API-key providers",
+        "Installed via Python",
     ),
     ;
 
     companion object {
         fun fromStored(value: String?): AgentKind = entries.firstOrNull {
             it.stableId == value || it.name == value
+        }
+
+        fun available(): List<AgentKind> {
+            val isArm64Device = android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
+            return entries.filter { !it.requires64Bit || isArm64Device }
         } ?: CLAUDE_CODE
     }
 }
