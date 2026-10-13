@@ -169,6 +169,10 @@ class RuntimeInstaller(private val context: Context) {
             require(File(staging, "usr/bin/bash").isFile) { "Core bundle is missing Bash" }
             rootfs.deleteRecursively()
             check(staging.renameTo(rootfs)) { "Could not activate the Linux environment" }
+            rootfsMarker.writeText(ROOTFS_VERSION)
+            coreToolsMarker.writeText(CORE_TOOLS_VERSION)
+            systemUpgradeMarker.writeText(SYSTEM_UPGRADE_VERSION)
+            coreReadyMarker.writeText("armv7-core-2026.09.5")
             check(ensureRootfsCompatibilityLinks()) { "Core runtime has an invalid Linux filesystem layout" }
             writeResolver()
             if (archive.parentFile == downloads) archive.delete()
