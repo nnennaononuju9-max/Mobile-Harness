@@ -654,7 +654,7 @@ if __name__ == "__main__":
         onProgress(RuntimeInstallProgress("Installing mini-swe-agent", fraction * 0.6f, indeterminate = true))
         verifyGuest(
             proot,
-            "pip3 install --break-system-packages --quiet mini-swe-agent",
+            "python3 -c \"import minisweagent\" && echo mini-swe-agent-preinstalled",
             "mini-swe-agent could not be installed",
         )
         onProgress(RuntimeInstallProgress("Installing the mini-swe-agent bridge script", fraction * 0.85f, indeterminate = true))
@@ -850,7 +850,11 @@ if __name__ == "__main__":
                 verifyGuest(proot, "node --version && npm --version", "Node.js tools could not be verified")
             }
             DevStack.PYTHON -> {
-                installRuntimeOverlay(PYTHON_BUNDLE, "Installing Python, pip, and venv", from, to, onProgress)
+                if (File(rootfs, "usr/bin/python3.11").exists() && File(rootfs, "usr/bin/pip3").exists()) {
+                    onProgress(RuntimeInstallProgress("Python is already in the Core runtime", to))
+                } else {
+                    installRuntimeOverlay(PYTHON_BUNDLE, "Installing Python, pip, and venv", from, to, onProgress)
+                }
                 runCatching {
                     verifyGuest(proot, "python3 --version && pip3 --version", "Python tools could not be verified")
                 }.onFailure { error ->
@@ -1943,8 +1947,8 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decis
         private val CORE_BUNDLE = RuntimeBundle(
             label = "Core",
             fileName = "pocketdev-core-armhf-2026.09.5.tar.zst",
-            sha256 = "df0cf7251c74f82d424231e3804114a4ca66b16130eea9abab11e220dc7ac012",
-            compressedBytes = 72_185_773L,
+            sha256 = "93941f5735d57054193d2ac20442fd7d99ccb4a72005ed887f6e0967eede9108",
+            compressedBytes = 135_337_631L,
         )
         private const val CLAUDE_BUNDLED_VERSION = "2.1.263"
         private const val CLAUDE_GUEST_PATH = "/usr/local/bin/claude"
