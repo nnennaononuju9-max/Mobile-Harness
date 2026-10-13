@@ -603,44 +603,129 @@ class RuntimeInstaller(private val context: Context) {
         }
     }
 
-        private val MINI_SWE_AGENT_VERSION = "1"
+        private val MINI_SWE_AGENT_VERSION = "3"
 
     private val MINI_BRIDGE_PY_SOURCE = """
 #!/usr/bin/env python3
-# mini_bridge.py - wraps mini-swe-agent's Python API and emits JSONL events
+# mini_bridge.py - wraps mini-swe-agent (v2 API) and emits JSONL events
 # matching the shape MiniEventParser (in MiniSweAgentRuntimeBridge.kt) reads.
-import sys, json, subprocess
+# Talks to any OpenAI-style /chat/completions endpoint over plain requests,
+# so litellm and openai are not needed.
+import json
+import pathlib
+import re
+import sys
+
+import requests
+import yaml
+
+import minisweagent
 from minisweagent.agents.default import DefaultAgent
-from minisweagent.models.litellm_model import LitellmModel
 from minisweagent.environments.local import LocalEnvironment
+from minisweagent.models import openrouter_model as om
+
 
 def emit(event):
     print(json.dumps(event), flush=True)
 
+
+def openai_base(url):
+    u = (url or "").strip().rstrip("/")
+    if u.endswith("/anthropic"):
+        u = u[: -len("/anthropic")]
+    if not re.search(r"/v[0-9]+\Z", u):
+        u = u + "/v1"
+    return u
+
+
+class OpenAICompatModel(om.OpenRouterModel):
+    def __init__(self, base_url, api_key, **kw):
+        kw.setdefault("cost_tracking", "ignore_errors")
+        super().__init__(**kw)
+        self._api_url = openai_base(base_url) + "/chat/completions"
+        self._api_key = api_key
+
+    def _query(self, messages, **kwargs):
+        headers = {
+            "Authorization": "Bearer " + self._api_key,
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.config.model_name,
+            "messages": messages,
+            "tools": [om.BASH_TOOL],
+            **(self.config.model_kwargs | kwargs),
+        }
+        try:
+            r = requests.post(self._api_url, headers=headers, data=json.dumps(payload), timeout=120)
+        except requests.exceptions.RequestException as e:
+            raise om.OpenRouterAPIError("Request failed: " + str(e)) from e
+        if r.status_code == 401:
+            raise om.OpenRouterAuthenticationError("Authentication failed (HTTP 401). Check the API key.")
+        if r.status_code == 402:
+            raise om.OpenRouterAuthenticationError("Insufficient balance (HTTP 402). Top up your API account.")
+        if r.status_code == 429:
+            raise om.OpenRouterRateLimitError("Rate limit exceeded")
+        if not r.ok:
+            raise om.OpenRouterAPIError("HTTP " + str(r.status_code) + ": " + r.text[:500])
+        return r.json()
+
+
+def load_config():
+    path = pathlib.Path(minisweagent.__file__).parent / "config" / "mini.yaml"
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
+
+
 def main():
     request = json.loads(sys.stdin.readline())
     task = request["message"]["content"]
-    model_name = request.get("model", "claude-sonnet-5")
+    model_name = request["model"]
     workdir = request.get("workdir", ".")
+    api_key = request.get("api_key", "")
+    if not api_key:
+        emit({"event": "result", "status": "ERROR", "error": "No API key was provided"})
+        return
 
-    env = LocalEnvironment(cwd=workdir)
-    model = LitellmModel(model_name=model_name)
-    agent = DefaultAgent(model, env)
+    cfg = load_config()
+    agent_cfg = cfg.get("agent", {})
+    model_cfg = cfg.get("model", {})
+    env_cfg = cfg.get("environment", {})
+
+    env = LocalEnvironment(cwd=workdir, env=env_cfg.get("env", {}))
+    model_kwargs = {
+        k: model_cfg[k] for k in ("observation_template", "format_error_template") if k in model_cfg
+    }
+    model = OpenAICompatModel(request.get("base_url", ""), api_key, model_name=model_name, **model_kwargs)
+    agent_kwargs = {k: agent_cfg[k] for k in ("system_template", "instance_template") if k in agent_cfg}
+    agent_kwargs["step_limit"] = int(agent_cfg.get("step_limit") or 60)
+    agent = DefaultAgent(model, env, **agent_kwargs)
 
     orig_execute = env.execute
-    def traced_execute(command, *a, **kw):
+
+    def traced_execute(action, *a, **kw):
+        command = action.get("command", "") if isinstance(action, dict) else str(action)
         emit({"event": "tool_started", "name": "Bash", "detail": command})
-        result = orig_execute(command, *a, **kw)
-        emit({"event": "tool_completed", "name": "Bash", "detail": command})
-        return result
+        try:
+            return orig_execute(action, *a, **kw)
+        finally:
+            emit({"event": "tool_completed", "name": "Bash", "detail": command})
+
     env.execute = traced_execute
 
     try:
-        exit_status, result_text = agent.run(task)
-        emit({"event": "text", "value": result_text or ""})
-        emit({"event": "result", "status": "SUCCESS", "response": result_text})
+        result = agent.run(task)
+        status = result.get("exit_status", "")
+        submission = result.get("submission", "") or ""
+        if submission:
+            emit({"event": "text", "value": submission})
+        if status == "Submitted":
+            emit({"event": "result", "status": "SUCCESS", "response": submission})
+        else:
+            emit({"event": "result", "status": "ERROR", "error": "Agent stopped: " + str(status)})
     except Exception as e:
         emit({"event": "result", "status": "ERROR", "error": str(e)})
+
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,0 @@
-Package: libx11-6
-Status: install reinstreq half-installed
-Priority: optional
-Section: libs
-Architecture: armhf
-Multi-Arch: same
-Version: 2:1.8.4-2+deb12u2

@@ -1,7 +1,0 @@
-Package: libssh2-1
-Status: install reinstreq half-installed
-Priority: optional
-Section: libs
-Architecture: armhf
-Multi-Arch: same
-Version: 1.10.0-3+b1

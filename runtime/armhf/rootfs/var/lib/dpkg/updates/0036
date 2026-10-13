@@ -1,7 +1,0 @@
-Package: libedit2
-Status: install reinstreq half-installed
-Priority: optional
-Section: libs
-Architecture: armhf
-Multi-Arch: same
-Version: 3.1-20221030-2

@@ -1,7 +1,0 @@
-Package: libcurl4
-Status: install reinstreq half-installed
-Priority: optional
-Section: libs
-Architecture: armhf
-Multi-Arch: same
-Version: 7.88.1-10+deb12u15

@@ -1,7 +1,0 @@
-Package: curl
-Status: install reinstreq half-installed
-Priority: optional
-Section: web
-Architecture: armhf
-Multi-Arch: foreign
-Version: 7.88.1-10+deb12u15

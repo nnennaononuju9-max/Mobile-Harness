@@ -1,7 +1,0 @@
-Package: perl-modules-5.36
-Status: install reinstreq half-installed
-Priority: optional
-Section: libs
-Architecture: all
-Multi-Arch: foreign
-Version: 5.36.0-7+deb12u3

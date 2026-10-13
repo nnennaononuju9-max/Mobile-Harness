@@ -1,7 +1,0 @@
-Package: liberror-perl
-Status: install reinstreq half-installed
-Priority: optional
-Section: perl
-Architecture: all
-Multi-Arch: foreign
-Version: 0.17029-2

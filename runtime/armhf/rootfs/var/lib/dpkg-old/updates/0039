@@ -1,7 +1,0 @@
-Package: libcbor0.8
-Status: install reinstreq half-installed
-Priority: optional
-Section: libs
-Architecture: armhf
-Multi-Arch: same
-Version: 0.8.0-2+b1

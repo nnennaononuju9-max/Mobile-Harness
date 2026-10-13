@@ -64,3 +64,5 @@ dist/runtime-bundles/sources/
 
 # Generated local in-app update test artifacts.
 dist/update-test/
+runtime/armhf/rootfs/
+runtime/armhf/*.tar.zst

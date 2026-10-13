@@ -1,7 +1,0 @@
-Package: xauth
-Status: install reinstreq half-installed
-Priority: optional
-Section: x11
-Architecture: armhf
-Multi-Arch: foreign
-Version: 1:1.1.2-1

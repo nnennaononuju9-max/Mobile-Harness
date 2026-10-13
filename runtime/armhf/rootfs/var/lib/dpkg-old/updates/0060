@@ -1,7 +1,0 @@
-Package: openssh-client
-Status: install reinstreq half-installed
-Priority: standard
-Section: net
-Architecture: armhf
-Multi-Arch: foreign
-Version: 1:9.2p1-2+deb12u10

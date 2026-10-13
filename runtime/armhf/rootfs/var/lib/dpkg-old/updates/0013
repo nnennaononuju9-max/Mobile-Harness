@@ -1,7 +1,0 @@
-Package: perl
-Status: install reinstreq half-installed
-Priority: standard
-Section: perl
-Architecture: armhf
-Multi-Arch: allowed
-Version: 5.36.0-7+deb12u3

@@ -1,7 +1,0 @@
-Package: libbsd0
-Status: install reinstreq half-installed
-Priority: optional
-Section: libs
-Architecture: armhf
-Multi-Arch: same
-Version: 0.11.7-2

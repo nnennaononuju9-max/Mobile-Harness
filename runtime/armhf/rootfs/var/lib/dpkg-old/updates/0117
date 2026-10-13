@@ -1,7 +1,0 @@
-Package: libxau6
-Status: install reinstreq half-installed
-Priority: optional
-Section: libs
-Architecture: armhf
-Multi-Arch: same
-Version: 1:1.0.9-1

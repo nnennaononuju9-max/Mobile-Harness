@@ -1,7 +1,0 @@
-Package: libsasl2-modules
-Status: install reinstreq half-installed
-Priority: optional
-Section: libs
-Architecture: armhf
-Multi-Arch: same
-Version: 2.1.28+dfsg-10

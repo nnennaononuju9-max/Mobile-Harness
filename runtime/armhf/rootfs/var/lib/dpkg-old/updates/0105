@@ -1,7 +1,0 @@
-Package: git-man
-Status: install reinstreq half-installed
-Priority: optional
-Section: doc
-Architecture: all
-Multi-Arch: foreign
-Version: 1:2.39.5-0+deb12u3

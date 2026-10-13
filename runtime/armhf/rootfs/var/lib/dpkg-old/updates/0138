@@ -1,7 +1,0 @@
-Package: patch
-Status: install reinstreq half-installed
-Priority: optional
-Section: vcs
-Architecture: armhf
-Multi-Arch: foreign
-Version: 2.7.6-7

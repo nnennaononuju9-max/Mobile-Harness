@@ -95,10 +95,11 @@ class MiniSweAgentRuntimeBridge(
             // Same env-building path ClaudeRuntimeBridge uses — resolves the real
             // ANTHROPIC_API_KEY/base-url/etc. for whichever provider is configured,
             // instead of hand-rolling a map here.
-            val launch = RuntimeLaunchConfigBuilder.build(
-                provider,
-                authToken = secret,
-                localGatewayUrl = null,
+            require(!secret.isNullOrBlank()) { "Enter your API key first" }
+            val launch = RuntimeLaunchConfig(
+                executable = "python3",
+                arguments = emptyList(),
+                environment = emptyMap(),
             )
 
             val command = listOf("python3", "/usr/local/bin/mini_bridge.py")
@@ -117,6 +118,8 @@ class MiniSweAgentRuntimeBridge(
             val request = JSONObject()
                 .put("message", JSONObject().put("content", prompt))
                 .put("model", model())
+                .put("base_url", provider.resolvedBaseUrl)
+                .put("api_key", secret ?: "")
                 .put("workdir", "/workspace/$projectSlug")
                 .toString() + "\n"
             process.outputStream.write(request.toByteArray())

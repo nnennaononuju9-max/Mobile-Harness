@@ -1,7 +1,0 @@
-Package: librtmp1
-Status: install reinstreq half-installed
-Priority: optional
-Section: libs
-Architecture: armhf
-Multi-Arch: same
-Version: 2.4+20151223.gitfa8646d.1-2+b2

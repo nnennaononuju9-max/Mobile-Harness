@@ -1,7 +1,0 @@
-Package: libfido2-1
-Status: install reinstreq half-installed
-Priority: optional
-Section: libs
-Architecture: armhf
-Multi-Arch: same
-Version: 1.12.0-2+b1
