@@ -603,7 +603,7 @@ class RuntimeInstaller(private val context: Context) {
         }
     }
 
-        private val MINI_SWE_AGENT_VERSION = "3"
+        private val MINI_SWE_AGENT_VERSION = "4"
 
     private val MINI_BRIDGE_PY_SOURCE = """
 #!/usr/bin/env python3
@@ -633,7 +633,7 @@ def openai_base(url):
     u = (url or "").strip().rstrip("/")
     if u.endswith("/anthropic"):
         u = u[: -len("/anthropic")]
-    if not re.search(r"/v[0-9]+\Z", u):
+    if not re.search(r"/(?:v[0-9]+|v1beta/openai)\Z", u):
         u = u + "/v1"
     return u
 

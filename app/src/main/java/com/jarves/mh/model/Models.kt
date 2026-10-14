@@ -41,6 +41,42 @@ enum class ProviderKind(
         fixedBaseUrl = true,
         fixedProtocol = true,
     ),
+    XAI_GROK(
+        "xAI Grok",
+        "OpenAI-compatible models from xAI",
+        ProviderProtocol.OPENAI_CHAT,
+        "https://api.x.ai/v1",
+        "grok-code-fast-1",
+        fixedBaseUrl = true,
+        fixedProtocol = true,
+    ),
+    OPENAI(
+        "OpenAI",
+        "Use your OpenAI API key",
+        ProviderProtocol.OPENAI_CHAT,
+        "https://api.openai.com/v1",
+        "gpt-4.1-mini",
+        fixedBaseUrl = true,
+        fixedProtocol = true,
+    ),
+    GROQ(
+        "Groq",
+        "Fast OpenAI-compatible models, free tier",
+        ProviderProtocol.OPENAI_CHAT,
+        "https://api.groq.com/openai/v1",
+        "llama-3.3-70b-versatile",
+        fixedBaseUrl = true,
+        fixedProtocol = true,
+    ),
+    GEMINI(
+        "Google Gemini",
+        "Use your Google AI Studio key",
+        ProviderProtocol.OPENAI_CHAT,
+        "https://generativelanguage.googleapis.com/v1beta/openai",
+        "gemini-2.5-flash",
+        fixedBaseUrl = true,
+        fixedProtocol = true,
+    ),
     CUSTOM("Custom API", "Anthropic-compatible endpoint", ProviderProtocol.ANTHROPIC_GATEWAY, "", "", true),
 }
 
@@ -149,7 +185,7 @@ fun providerProtocolForAgent(profile: ProviderProfile, agent: AgentKind): Provid
 /** Provider choices shown for the selected coding agent. */
 fun providersForAgent(agent: AgentKind): List<ProviderKind> = when (agent) {
     AgentKind.DEEPSEEK_HARNESS -> ProviderKind.entries.filter { it in DEEPSEEK_HARNESS_PROVIDERS }
-    AgentKind.CLAUDE_CODE -> ProviderKind.entries.filterNot { it == ProviderKind.OPENCODE_ZEN }
+    AgentKind.CLAUDE_CODE -> ProviderKind.entries.filterNot { it == ProviderKind.OPENCODE_ZEN || it == ProviderKind.XAI_GROK || it == ProviderKind.OPENAI || it == ProviderKind.GROQ || it == ProviderKind.GEMINI }
     AgentKind.ANTIGRAVITY -> emptyList()
     AgentKind.MINI_SWE_AGENT -> ProviderKind.entries.filterNot { it == ProviderKind.OPENCODE_ZEN }
 }
