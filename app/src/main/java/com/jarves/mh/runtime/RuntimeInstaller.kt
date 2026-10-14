@@ -262,7 +262,7 @@ class RuntimeInstaller(private val context: Context) {
         
             com.jarves.mh.model.AgentKind.MINI_SWE_AGENT -> isInstalled() &&
                 File(rootfs, "usr/local/bin/mini_bridge.py").canExecute() &&
-                !miniSweMarker.readTextOrNull().isNullOrBlank()
+                miniSweMarker.readTextOrNull()?.trim() == MINI_SWE_AGENT_VERSION
         }
     }
 
@@ -603,7 +603,7 @@ class RuntimeInstaller(private val context: Context) {
         }
     }
 
-        private val MINI_SWE_AGENT_VERSION = "4"
+        private val MINI_SWE_AGENT_VERSION = "5"
 
     private val MINI_BRIDGE_PY_SOURCE = """
 #!/usr/bin/env python3
@@ -680,6 +680,23 @@ def load_config():
 def main():
     request = json.loads(sys.stdin.readline())
     task = request["message"]["content"]
+    # tool inventory: detect what is installed each time a task starts
+    import shutil
+    wanted = ["python3", "pip3", "node", "npm", "git", "gcc", "g++", "make", "cmake", "php", "composer", "java", "go", "rustc", "cargo", "ruby", "curl", "unzip"]
+    have = [t for t in wanted if shutil.which(t)]
+    lack = [t for t in wanted if t not in have]
+    task = (
+        "You are a friendly, helpful assistant that can also run shell commands. "
+        "If the user's message is a greeting, a question, or casual conversation that needs no commands or file changes, "
+        "do NOT explore or modify files. Answer right away with exactly one bash command that submits your reply, like this:\n"
+        "cat <<'EOF'\nCOMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT\n<your reply to the user>\nEOF\n"
+        "Only run other commands when the user asks you to do a task such as creating, editing, running or fixing code. "
+        "Tools installed right now: " + ", ".join(have) + ". Not installed: " + ", ".join(lack) + ". "
+        "Choose tools that fit the task from the installed list. Before relying on anything not listed, check it with: command -v NAME. "
+        "If the task needs a tool that is not installed, say so in your final answer instead of trying to install it (apt does not work here). "
+        "When a task is done, submit a short plain-language summary of what you did.\n\n"
+        "User message: " + task
+    )
     model_name = request["model"]
     workdir = request.get("workdir", ".")
     api_key = request.get("api_key", "")

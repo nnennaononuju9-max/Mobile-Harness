@@ -2584,6 +2584,7 @@ private fun ProviderChoiceRow(
         ProviderKind.OPENAI -> Color(0xFF10A37F)
         ProviderKind.GROQ -> Color(0xFFF55036)
         ProviderKind.GEMINI -> Color(0xFF4285F4)
+        ProviderKind.INCEPTION -> Color(0xFF8B5CF6)
         ProviderKind.CUSTOM -> PocketOrange
     }
     val mark = when (provider) {
@@ -2598,6 +2599,7 @@ private fun ProviderChoiceRow(
         ProviderKind.OPENAI -> "AI"
         ProviderKind.GROQ -> "GQ"
         ProviderKind.GEMINI -> "G"
+        ProviderKind.INCEPTION -> "IN"
         ProviderKind.CUSTOM -> "<>"
     }
 

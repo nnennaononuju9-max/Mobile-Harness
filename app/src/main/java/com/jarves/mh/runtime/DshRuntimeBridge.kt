@@ -718,7 +718,7 @@ internal object DshRouteMapper {
                 defaultModel = model,
                 custom = DshCustomRoute("openai-completions", profile.resolvedBaseUrl),
             )
-            ProviderKind.XAI_GROK, ProviderKind.OPENAI, ProviderKind.GROQ, ProviderKind.GEMINI -> DshRoute(
+            ProviderKind.XAI_GROK, ProviderKind.OPENAI, ProviderKind.GROQ, ProviderKind.GEMINI, ProviderKind.INCEPTION -> DshRoute(
                 name = "mh-openai-compat",
                 keyEnv = DshRuntimeBridge.FALLBACK_KEY_ENV,
                 defaultModel = model,

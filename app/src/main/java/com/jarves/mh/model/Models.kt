@@ -73,7 +73,16 @@ enum class ProviderKind(
         "Use your Google AI Studio key",
         ProviderProtocol.OPENAI_CHAT,
         "https://generativelanguage.googleapis.com/v1beta/openai",
-        "gemini-2.5-flash",
+        "gemini-3.8-flash",
+        fixedBaseUrl = true,
+        fixedProtocol = true,
+    ),
+    INCEPTION(
+        "Inception Mercury",
+        "Mercury 2.5 via the Inception API",
+        ProviderProtocol.OPENAI_CHAT,
+        "https://api.inceptionlabs.ai/v1",
+        "mercury-2.5",
         fixedBaseUrl = true,
         fixedProtocol = true,
     ),
@@ -185,7 +194,7 @@ fun providerProtocolForAgent(profile: ProviderProfile, agent: AgentKind): Provid
 /** Provider choices shown for the selected coding agent. */
 fun providersForAgent(agent: AgentKind): List<ProviderKind> = when (agent) {
     AgentKind.DEEPSEEK_HARNESS -> ProviderKind.entries.filter { it in DEEPSEEK_HARNESS_PROVIDERS }
-    AgentKind.CLAUDE_CODE -> ProviderKind.entries.filterNot { it == ProviderKind.OPENCODE_ZEN || it == ProviderKind.XAI_GROK || it == ProviderKind.OPENAI || it == ProviderKind.GROQ || it == ProviderKind.GEMINI }
+    AgentKind.CLAUDE_CODE -> ProviderKind.entries.filterNot { it == ProviderKind.OPENCODE_ZEN || it == ProviderKind.XAI_GROK || it == ProviderKind.OPENAI || it == ProviderKind.GROQ || it == ProviderKind.GEMINI || it == ProviderKind.INCEPTION }
     AgentKind.ANTIGRAVITY -> emptyList()
     AgentKind.MINI_SWE_AGENT -> ProviderKind.entries.filterNot { it == ProviderKind.OPENCODE_ZEN }
 }
