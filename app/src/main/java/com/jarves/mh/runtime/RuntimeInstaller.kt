@@ -67,6 +67,7 @@ class RuntimeInstaller(private val context: Context) {
     private val devStacksFile = File(rootfs, ".pocket-dev-stacks.json")
     private val dshMarker = File(rootfs, ".pocket-dsh-version")
     private val agyMarker = File(rootfs, ".pocket-agy-version")
+    private val node22Marker = File(rootfs, ".pocket-node22-version")
     private val miniSweMarker = File(rootfs, ".pocket-mini-swe-agent-version")
     private val githubCliMarker = File(rootfs, ".pocket-github-cli-version")
     private val dshAndroidCompatibilityMarker = File(rootfs, ".pocket-dsh-android-compat-version")
@@ -83,6 +84,7 @@ class RuntimeInstaller(private val context: Context) {
             proot.canExecute() &&
             File(rootfs, "usr/bin/bash").exists() &&
             rootfsMarker.readTextOrNull() == ROOTFS_VERSION &&
+            node22Marker.readTextOrNull()?.trim() == NODE22_VERSION &&
             File(rootfs, "usr/local/bin/node").exists() &&
             (legacyLanguageTools || coreToolsReady) &&
             coreReadyMarker.exists()
@@ -179,6 +181,35 @@ class RuntimeInstaller(private val context: Context) {
         }
 
         check(ensureRootfsCompatibilityLinks()) { "Core runtime has an invalid Linux filesystem layout" }
+
+        if (node22Marker.readTextOrNull()?.trim() != NODE22_VERSION) {
+            // Keep the old Node files until the new overlay is fully in place.
+            val moved = mutableListOf<Pair<File, File>>()
+            for (rel in listOf("usr/bin/node", "usr/bin/npm", "usr/bin/npx")) {
+                val original = File(rootfs, rel)
+                if (original.exists() || java.nio.file.Files.isSymbolicLink(original.toPath())) {
+                    val backup = File(rootfs, "$rel.node18")
+                    backup.delete()
+                    if (original.renameTo(backup)) moved.add(backup to original)
+                }
+            }
+            try {
+                installRuntimeOverlay(NODE22_BUNDLE, "Updating Node.js to $NODE22_VERSION", 0.30f, 0.56f, onProgress)
+                check(File(rootfs, "usr/bin/node").exists()) { "Node.js 22 overlay did not install node" }
+                val localNode = File(rootfs, "usr/local/bin/node")
+                localNode.parentFile?.mkdirs()
+                java.nio.file.Files.deleteIfExists(localNode.toPath())
+                java.nio.file.Files.createSymbolicLink(localNode.toPath(), java.nio.file.Paths.get("../../bin/node"))
+                node22Marker.writeText(NODE22_VERSION)
+            } catch (error: Throwable) {
+                moved.forEach { (backup, original) ->
+                    original.delete()
+                    backup.renameTo(original)
+                }
+                throw error
+            }
+            moved.forEach { (backup, _) -> backup.delete() }
+        }
 
         migrateLegacyClaudeMarker()
         ensureSettingsAndHooks()
@@ -279,7 +310,7 @@ class RuntimeInstaller(private val context: Context) {
 
     fun isGitHubCliInstalled(): Boolean = isInstalled() &&
         File(rootfs, GITHUB_CLI_GUEST_PATH.removePrefix("/")).canExecute() &&
-        githubCliMarker.readTextOrNull() == "apt"
+        githubCliMarker.readTextOrNull() == "overlay"
 
     /** Installs GitHub CLI for the ARMHF guest on demand; it is not bundled in the APK. */
     suspend fun ensureGitHubCliInstalled(
@@ -295,16 +326,7 @@ class RuntimeInstaller(private val context: Context) {
         val runtime = installedRuntime()
         val verify = runtime.proot
 
-        verifyGuest(
-            proot = verify,
-            command = """
-                set -e
-                export DEBIAN_FRONTEND=noninteractive
-                apt-get update
-                apt-get install -y gh
-            """.trimIndent(),
-            failureMessage = "GitHub CLI ARMHF installation failed",
-        )
+        installRuntimeOverlay(GITHUB_CLI_BUNDLE, "Installing GitHub CLI", 0.1f, 0.8f, onProgress)
 
         onProgress(
             RuntimeInstallProgress(
@@ -320,7 +342,7 @@ class RuntimeInstaller(private val context: Context) {
             failureMessage = "GitHub CLI verification failed",
         )
 
-        githubCliMarker.writeText("apt")
+        githubCliMarker.writeText("overlay")
         check(isGitHubCliInstalled()) {
             "GitHub CLI installation is incomplete"
         }
@@ -603,7 +625,7 @@ class RuntimeInstaller(private val context: Context) {
         }
     }
 
-        private val MINI_SWE_AGENT_VERSION = "5"
+        private val MINI_SWE_AGENT_VERSION = "6"
 
     private val MINI_BRIDGE_PY_SOURCE = """
 #!/usr/bin/env python3
@@ -618,6 +640,74 @@ import sys
 
 import requests
 import yaml
+
+
+def emit(event):
+    print(json.dumps(event), flush=True)
+
+
+def openai_base(url):
+    u = (url or "").strip().rstrip("/")
+    if u.endswith("/anthropic"):
+        u = u[: -len("/anthropic")]
+    if not re.search(r"/(?:v[0-9]+|v1beta/openai)\Z", u):
+        u = u + "/v1"
+    return u
+
+
+TASK_HINTS = re.compile(
+    r"\b(create|build|write|run|fix|install|edit|delete|remove|implement|debug|compile|deploy|refactor|"
+    r"file|folder|directory|script|code|bug|error|function|class|git|pip|npm|python|node|php|html|css|server|"
+    r"project|repo|test|app)\b|\w+\.(py|js|ts|c|cpp|html|css|json|md|txt|sh|php|java|go|rs)\b",
+    re.I,
+)
+
+
+def fast_chat(request):
+    # Plain one-call answer for casual messages. Returns True when it answered.
+    msg = request["message"]["content"]
+    api_key = request.get("api_key", "")
+    if not api_key or len(msg) > 240 or TASK_HINTS.search(msg):
+        return False
+    url = openai_base(request.get("base_url", "")) + "/chat/completions"
+    payload = {
+        "model": request["model"],
+        "max_tokens": 1500,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are a friendly, helpful assistant inside a mobile coding app. "
+                    "Answer conversational messages directly and briefly. "
+                    "If the message actually asks you to create, edit, run, fix or inspect code or files, "
+                    "reply with exactly: NEED_TOOLS"
+                ),
+            },
+            {"role": "user", "content": msg},
+        ],
+    }
+    try:
+        r = requests.post(
+            url,
+            headers={"Authorization": "Bearer " + api_key, "Content-Type": "application/json"},
+            data=json.dumps(payload),
+            timeout=40,
+        )
+        if not r.ok:
+            return False
+        text = (r.json()["choices"][0]["message"].get("content") or "").strip()
+    except Exception:
+        return False
+    if not text or "NEED_TOOLS" in text:
+        return False
+    emit({"event": "text", "value": text})
+    emit({"event": "result", "status": "SUCCESS", "response": text})
+    return True
+
+
+_REQ = json.loads(sys.stdin.readline())
+if fast_chat(_REQ):
+    sys.exit(0)
 
 import minisweagent
 from minisweagent.agents.default import DefaultAgent
@@ -678,7 +768,7 @@ def load_config():
 
 
 def main():
-    request = json.loads(sys.stdin.readline())
+    request = _REQ
     task = request["message"]["content"]
     # tool inventory: detect what is installed each time a task starts
     import shutil
@@ -2022,7 +2112,7 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decis
 
     companion object {
         const val AGY_GUEST_PATH = "/root/.local/bin/agy"
-        const val GITHUB_CLI_GUEST_PATH = "/root/.local/bin/gh"
+        const val GITHUB_CLI_GUEST_PATH = "/usr/bin/gh"
         private const val AGY_VERSION = "1.1.27"
         private const val LEGACY_README = "# Pocket Dev project\n\nThis project is managed locally on Android.\n"
         private const val LEGACY_INDEX = "<!doctype html><title>Pocket Dev</title><h1>Hello from Android</h1>\n"
@@ -2063,6 +2153,19 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decis
             fileName = "pocketdev-claude-armhf-2026.09.1.tar.zst",
             sha256 = "0f68e15630e8c0fc941afe3f61ab5a3eb4407b334018de6dbdabfa5eca627724",
             compressedBytes = 75_289_800L,
+        )
+        private val GITHUB_CLI_BUNDLE = RuntimeBundle(
+            label = "GitHub CLI",
+            fileName = "pocketdev-gh-armhf-2026.10.1.tar.zst",
+            sha256 = "61d8fbcc6c0b7f2dd4c3f5bf225d3bededaf4c0eb220adcdad94c601e70629ee",
+            compressedBytes = 12_367_103L,
+        )
+        private const val NODE22_VERSION = "22.22.3"
+        private val NODE22_BUNDLE = RuntimeBundle(
+            label = "Node.js 22",
+            fileName = "pocketdev-node22-armhf-2026.10.1.tar.zst",
+            sha256 = "a07cc5dae63dd1fd8797c7b4530f1da18ae9dba668384132a2841debcd752e1e",
+            compressedBytes = 34_006_981L,
         )
         private val PYTHON_BUNDLE = RuntimeBundle(
             label = "Python",
